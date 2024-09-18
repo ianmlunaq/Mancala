@@ -1,1 +1,1 @@
-/workspaces/Mancala/mancala/target/debug/mancala: /workspaces/Mancala/mancala/src/main.rs
+/Users/ianmlq/Documents/dev/projects/Mancala/mancala/target/debug/mancala: /Users/ianmlq/Documents/dev/projects/Mancala/mancala/src/main.rs
