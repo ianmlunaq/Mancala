@@ -1,6 +1,31 @@
-use std::{io, usize};
+use std::{io, thread, time::{self, Duration}, usize};
 use colored::Colorize;
-use rand::{random, Rng};
+use rand::Rng;
+use term::Terminal;
+
+fn keybind_letter_to_number(keybind_letter: char) -> usize {
+    match keybind_letter {
+        'A' => 0,
+        'S' => 1,
+        'D' => 2,
+        'F' => 3,
+        'J' => 4,
+        'K' => 5,
+        _ => 100,
+    }
+}
+
+fn number_to_keybind_letter(number: usize) -> char {
+    match number {
+        0 | 12 => 'A',
+        1 | 11 => 'S',
+        2 | 10 => 'D',
+        3 | 9 => 'F',
+        4 | 8 => 'J',
+        5 | 7 => 'K',
+        _ => '?',
+    }
+}
 
 fn new_mancala_board_indexed() -> [u8; 14] {
     let mancala_board = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
@@ -12,9 +37,9 @@ fn new_mancala_board() -> [u8; 14] {
     mancala_board
 }
 
-fn cp_sow(mancala_board: &mut [u8; 14]) {
+fn cp_sow(mancala_board: &mut [u8; 14]) -> bool {
     let pit_index = rand::thread_rng().gen_range(7..=12);
-    println!("Random {}!", pit_index);
+    print!("CP chooses {}!", number_to_keybind_letter(pit_index));
     let pit_qty: usize = (*mancala_board.get(pit_index).unwrap()).into();
     let last_sow = pit_index + pit_qty;
     //println!("{last_sow}");
@@ -23,13 +48,13 @@ fn cp_sow(mancala_board: &mut [u8; 14]) {
     for i in 1..=pit_qty {
         let mut current_pit = pit_index + i;
 
-        //This if statement ensures the sowing does not go out of bounds of 
+        //These 2 if statements ensure the sowing does not go out of bounds of 
         // the vector and wraps around without sowing into the opponent's store
         if current_pit > 13 {
             current_pit -= 14;
         }
         if current_pit == 6 {
-            
+            continue;
         }
 
         mancala_board[current_pit] += 1;
@@ -48,7 +73,6 @@ fn sow(mancala_board: &mut [u8; 14], pit_index: usize) -> bool {
         0..6 => {
             let pit_qty: usize = (*mancala_board.get(pit_index).unwrap()).into();
             let last_sow = pit_index + pit_qty;
-            //println!("{last_sow}");
             mancala_board[pit_index] = 0;
 
             for i in 1..=pit_qty {
@@ -102,7 +126,13 @@ fn print_mancala_board(mancala_board: [u8; 14]) {
     println!("└{0:─<4}┴{0:─<29}┴{0:─<4}┘", "─");
 
     //Prints keybinds
-    println!("{0:6}{1:^4} {2:^4} {3:^4} {4:^4} {5:^4} {6:^4}", " ", "A".bright_yellow().bold(), "S".bright_yellow().bold(), "D".bright_yellow().bold(), "F".bright_yellow().bold(), "J".bright_yellow().bold(), "K".bright_yellow().bold());
+    println!("{0:6}{1:^4} {2:^4} {3:^4} {4:^4} {5:^4} {6:^4}\n", " ",
+    "A".bright_yellow().bold(), "S".bright_yellow().bold(), "D".bright_yellow().bold(),
+    "F".bright_yellow().bold(), "J".bright_yellow().bold(), "K".bright_yellow().bold());
+
+}
+
+fn get_user_input() {
 
 }
 
@@ -113,34 +143,26 @@ fn main() {
         print_mancala_board(mancala_board);
 
         let mut input = String::new();
-        println!("\nChoose a letter!");
+        println!("Choose a letter!");
         io::stdin()
             .read_line(&mut input)
             .expect("Failure");
 
         let pit_letter = input.get(0..1).unwrap().parse::<char>().unwrap().to_ascii_uppercase();
+        print!("\nYou chose {}!", pit_letter);
 
-        match pit_letter {
-            'A' | 'S' | 'D' | 'F' | 'J' | 'K' => {
-                let pit_index;
+        sow(&mut mancala_board, keybind_letter_to_number(pit_letter));
 
-                match pit_letter {
-                    'A' => pit_index = 0,
-                    'S' => pit_index = 1,
-                    'D' => pit_index = 2,
-                    'F' => pit_index = 3,
-                    'J' => pit_index = 4,
-                    'K' => pit_index = 5,
-                    _ => pit_index = 6,
-                }
+        print_mancala_board(mancala_board);
 
-                sow(&mut mancala_board, pit_index)
-            }
-            _ => {
-                println!("\"{}\" is not valid!", input.trim());
-                false
-            }
-        };
+        print!("Press any key to continue...");
+        io::stdin()
+            .read_line(&mut input)
+            .expect("Readline error!");
+
+        thread::sleep(Duration::from_secs(2));
+
+        
 
         cp_sow(&mut mancala_board);
 
