@@ -1,7 +1,7 @@
-use std::{io, thread, time::{self, Duration}, usize};
+use std::{io, usize};
 use colored::Colorize;
 use rand::Rng;
-use term::Terminal;
+//use term::Terminal;
 
 fn keybind_letter_to_number(keybind_letter: char) -> usize {
     match keybind_letter {
@@ -27,22 +27,23 @@ fn number_to_keybind_letter(number: usize) -> char {
     }
 }
 
-fn new_mancala_board_indexed() -> [u8; 14] {
+
+/*fn new_mancala_board_indexed() -> [u8; 14] {
     let mancala_board = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
     mancala_board
-}
+}*/
 
 fn new_mancala_board() -> [u8; 14] {
     let mancala_board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0];
     mancala_board
 }
 
+// todo: fix invalid 0-pit selections
 fn cp_sow(mancala_board: &mut [u8; 14]) -> bool {
     let pit_index = rand::thread_rng().gen_range(7..=12);
-    print!("CP chooses {}!", number_to_keybind_letter(pit_index));
+    print!("{} chooses {}!", "CP".blue(), number_to_keybind_letter(pit_index));
     let pit_qty: usize = (*mancala_board.get(pit_index).unwrap()).into();
     let last_sow = pit_index + pit_qty;
-    //println!("{last_sow}");
     mancala_board[pit_index] = 0;
 
     for i in 1..=pit_qty {
@@ -60,7 +61,7 @@ fn cp_sow(mancala_board: &mut [u8; 14]) -> bool {
         mancala_board[current_pit] += 1;
     }
 
-    if last_sow == 6 {
+    if last_sow == 13 {
         true
     } else {
         false
@@ -68,11 +69,13 @@ fn cp_sow(mancala_board: &mut [u8; 14]) -> bool {
     
 }
 
+// todo: fix invalid 0-pit selections
+// todo: return player redo elegibility
 fn sow(mancala_board: &mut [u8; 14], pit_index: usize) -> bool {
     match pit_index {
         0..6 => {
             let pit_qty: usize = (*mancala_board.get(pit_index).unwrap()).into();
-            let last_sow = pit_index + pit_qty;
+            //let last_sow = pit_index + pit_qty;
             mancala_board[pit_index] = 0;
 
             for i in 1..=pit_qty {
@@ -87,14 +90,16 @@ fn sow(mancala_board: &mut [u8; 14], pit_index: usize) -> bool {
                 mancala_board[current_pit] += 1;
             }
 
-            if last_sow == 6 {
+            true
+
+            /* if last_sow == 6 {
                 true
             } else {
                 false
-            }
+            } */
         },
         6.. => {
-            println!("That's not a valid option!");
+            println!("{}", " That's not a valid option!".bright_red());
             false
         },
     }
@@ -132,8 +137,13 @@ fn print_mancala_board(mancala_board: [u8; 14]) {
 
 }
 
-fn get_user_input() {
-
+fn get_user_input(prompt: &str) -> String {
+    println!("{prompt}");
+    let mut input = String::new();
+    io::stdin()
+        .read_line(&mut input)
+        .expect("Failure");
+    input
 }
 
 fn main() {
@@ -142,29 +152,23 @@ fn main() {
     loop {
         print_mancala_board(mancala_board);
 
-        let mut input = String::new();
-        println!("Choose a letter!");
-        io::stdin()
-            .read_line(&mut input)
-            .expect("Failure");
+        loop {
+            let input = get_user_input("Choose a letter!");
 
-        let pit_letter = input.get(0..1).unwrap().parse::<char>().unwrap().to_ascii_uppercase();
-        print!("\nYou chose {}!", pit_letter);
+            let pit_letter = input.get(0..1).unwrap().parse::<char>().unwrap().to_ascii_uppercase();
+            print!("\nYou chose \"{}\"!", pit_letter.to_string().trim().bright_yellow());
 
-        sow(&mut mancala_board, keybind_letter_to_number(pit_letter));
+            if sow(&mut mancala_board, keybind_letter_to_number(pit_letter)) { break; }
+        }
 
         print_mancala_board(mancala_board);
 
-        print!("Press any key to continue...");
-        io::stdin()
-            .read_line(&mut input)
-            .expect("Readline error!");
+        get_user_input("CP's turn next! Press [Enter] to continue...");
 
-        thread::sleep(Duration::from_secs(2));
-
-        
-
-        cp_sow(&mut mancala_board);
-
+        loop {
+            if !cp_sow(&mut mancala_board) { break;}
+            print_mancala_board(mancala_board);
+            get_user_input("CP goes again! Press [Enter] to continue...");
+        }
     }
 }
