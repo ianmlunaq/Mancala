@@ -1,4 +1,4 @@
-use std::{io, usize};
+use std::{io, usize, unreachable};
 use colored::Colorize;
 use rand::Rng;
 //use term::Terminal;
@@ -23,85 +23,111 @@ fn number_to_keybind_letter(number: usize) -> char {
         3 | 9 => 'F',
         4 | 8 => 'J',
         5 | 7 => 'K',
-        _ => '?',
+        _ => unreachable!("How did we get here?"),
     }
 }
 
-
-/*fn new_mancala_board_indexed() -> [u8; 14] {
-    let mancala_board = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+fn new_mancala_board_custom() -> [u8; 14] {
+    let mancala_board = [4, 4, 4, 4, 4, 1, 0, 0, 0, 0, 0, 0, 14, 0];
     mancala_board
-}*/
+}
 
 fn new_mancala_board() -> [u8; 14] {
     let mancala_board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0];
     mancala_board
 }
 
-// todo: fix invalid 0-pit selections
+// todo: add capture mechanic
+// cp_sow returns false to indicate CP gets another turn and returns true to indicate their turn is over
 fn cp_sow(mancala_board: &mut [u8; 14]) -> bool {
-    let pit_index = rand::thread_rng().gen_range(7..=12);
+
+    // This if statement inside a loop ensures an empty pit is not selected
+    let mut pit_index;
+    loop { // todo: fix infiniloop
+        pit_index = rand::thread_rng().gen_range(7..=12);
+        if mancala_board[pit_index] != 0 { break; }
+    }
+    
     print!("{} chooses {}!", "CP".blue(), number_to_keybind_letter(pit_index));
     let pit_qty: usize = (*mancala_board.get(pit_index).unwrap()).into();
-    let last_sow = pit_index + pit_qty;
+    let mut last_sow:usize = 0;
     mancala_board[pit_index] = 0;
 
     for i in 1..=pit_qty {
         let mut current_pit = pit_index + i;
 
-        //These 2 if statements ensure the sowing does not go out of bounds of 
-        // the vector and wraps around without sowing into the opponent's store
+        // This if statements ensure the sowing does not go
+        // out of bounds of the vector and wraps around
         if current_pit > 13 {
             current_pit -= 14;
+
+            // This if statement blocks sowing into opponent's store
+            if current_pit > 5 {
+                current_pit += 1;
+            }
         }
-        if current_pit == 6 {
-            continue;
-        }
+
+        println!("Current: {current_pit}");
 
         mancala_board[current_pit] += 1;
+        last_sow = current_pit;
     }
 
+    println!("Last sow: {last_sow}");
+
     if last_sow == 13 {
-        true
-    } else {
         false
+    } else {
+        true
     }
     
 }
 
-// todo: fix invalid 0-pit selections
-// todo: return player redo elegibility
+// todo: add capture mechanic
+// sow returns false to indicate player gets another turn and returns true to indicate their turn is over
 fn sow(mancala_board: &mut [u8; 14], pit_index: usize) -> bool {
+    let pit_qty: usize = (*mancala_board
+        .get(pit_index)
+        .unwrap_or(&100))
+        .into();
+
+    // This match statement ensures the player's pit selection is valid (i.e. index 0-5 and not empty)
     match pit_index {
-        0..6 => {
-            let pit_qty: usize = (*mancala_board.get(pit_index).unwrap()).into();
-            //let last_sow = pit_index + pit_qty;
+        0..6 if pit_qty != 0 => {
             mancala_board[pit_index] = 0;
 
+            // last_sow is updated after every iteration of the for loop to ensure its value is that
+            // of the index of the final sow. It's then checked to see if player gets a bonus turn.
+            let mut last_sow: usize = 0;
+
+            // This for loop adds 1 to each pit proceeding pit_index
             for i in 1..=pit_qty {
                 let mut current_pit = pit_index + i;
 
-                //This if statement ensures the sowing does not go out of bounds of 
-                // the vector and wraps around without sowing into the opponent's store
+                // This if statement ensures the sowing does not go out of bounds of the vector
+                // and wraps around to the beginning without sowing into the opponent's store
                 if current_pit > 12 {
                     current_pit -= 13;
                 }
 
                 mancala_board[current_pit] += 1;
+
+                last_sow = current_pit;
             }
 
-            true
-
-            /* if last_sow == 6 {
-                true
-            } else {
+            // This if statement checks last_sow to see if player gets a bonus turn
+            if last_sow == 6 {
+                print!(" Go again! ");
                 false
-            } */
+            } else {
+                true
+            }
         },
-        6.. => {
+        _ => {
             println!("{}", " That's not a valid option!".bright_red());
             false
         },
+        
     }
 }
 
@@ -146,29 +172,34 @@ fn get_user_input(prompt: &str) -> String {
     input
 }
 
+// todo: implement endgame bahavior
 fn main() {
-    let mut mancala_board = new_mancala_board();
+    let mut mancala_board = new_mancala_board_custom();
 
     loop {
         print_mancala_board(mancala_board);
 
+        // Human player loop
         loop {
             let input = get_user_input("Choose a letter!");
-
             let pit_letter = input.get(0..1).unwrap().parse::<char>().unwrap().to_ascii_uppercase();
             print!("\nYou chose \"{}\"!", pit_letter.to_string().trim().bright_yellow());
 
-            if sow(&mut mancala_board, keybind_letter_to_number(pit_letter)) { break; }
+            let turn_over = sow(&mut mancala_board, keybind_letter_to_number(pit_letter));
+            print_mancala_board(mancala_board);
+
+            if turn_over { break; }
         }
 
-        print_mancala_board(mancala_board);
+        print!("{} turn next! ", "CP's".blue());
+        get_user_input("Press [Enter] to continue...");
 
-        get_user_input("CP's turn next! Press [Enter] to continue...");
-
+        // CP loop
         loop {
-            if !cp_sow(&mut mancala_board) { break;}
+            if cp_sow(&mut mancala_board) { break;}
             print_mancala_board(mancala_board);
-            get_user_input("CP goes again! Press [Enter] to continue...");
+            print!("{} goes again! ", "CP".blue());
+            get_user_input("CP Press [Enter] to continue...");
         }
     }
 }
