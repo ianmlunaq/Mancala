@@ -27,8 +27,28 @@ fn number_to_keybind_letter(number: usize) -> char {
     }
 }
 
+fn get_opposite_pit(pit_index: usize) -> usize {
+    match pit_index {
+        0 => 12,
+        1 => 11,
+        2 => 10,
+        3 => 9,
+        4 => 8,
+        5 => 7,
+
+        7 => 5,
+        8 => 4,
+        9 => 3,
+        10 => 2,
+        11 => 1,
+        12 => 0,
+
+        _ => unreachable!("How did we get here?"),
+    }
+}
+
 fn new_mancala_board_custom() -> [u8; 14] {
-    let mancala_board = [4, 4, 4, 4, 4, 1, 0, 0, 0, 0, 0, 0, 14, 0];
+    let mancala_board = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
     mancala_board
 }
 
@@ -67,17 +87,16 @@ fn cp_sow(mancala_board: &mut [u8; 14]) -> bool {
             }
         }
 
-        println!("Current: {current_pit}");
-
         mancala_board[current_pit] += 1;
         last_sow = current_pit;
     }
 
-    println!("Last sow: {last_sow}");
-
     if last_sow == 13 {
         false
     } else {
+        if (7..=12).contains(&last_sow) && *mancala_board.get(last_sow).unwrap() == 1 {
+            
+        }
         true
     }
     
